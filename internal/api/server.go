@@ -345,7 +345,16 @@ func (s *Server) setupRoutes() {
 			},
 		})
 	})
+	
+	// Serve static files (e.g. for QR codes)
+	s.engine.Static("/static", "./static")
+
 	s.engine.POST("/v1internal:method", geminiCLIHandlers.CLIHandler)
+
+	// Favicon (prevent 404 noise)
+	s.engine.GET("/favicon.ico", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
 
 	// OAuth callback endpoints (reuse main server port)
 	// These endpoints receive provider redirects and persist
@@ -474,9 +483,14 @@ func (s *Server) registerManagementRoutes() {
 	mgmt.Use(s.managementAvailabilityMiddleware(), s.mgmt.Middleware())
 	{
 		mgmt.GET("/usage", s.mgmt.GetUsageStatistics)
+		mgmt.GET("/activity", s.mgmt.GetActivityLogs)
+		mgmt.GET("/activity/export", s.mgmt.ExportActivityLogs)
+		mgmt.GET("/stats/trends", s.mgmt.GetUsageTrends)
+		mgmt.GET("/events", s.mgmt.GetEvents)
 		mgmt.GET("/config", s.mgmt.GetConfig)
-		mgmt.GET("/config.yaml", s.mgmt.GetConfigYAML)
-		mgmt.PUT("/config.yaml", s.mgmt.PutConfigYAML)
+		// mgmt.PUT("/config", s.mgmt.PutConfig) // Not implemented yet
+		mgmt.GET("/config/yaml", s.mgmt.GetConfigYAML)
+		mgmt.PUT("/config/yaml", s.mgmt.PutConfigYAML)
 		mgmt.GET("/latest-version", s.mgmt.GetLatestVersion)
 
 		mgmt.GET("/debug", s.mgmt.GetDebug)
@@ -503,6 +517,11 @@ func (s *Server) registerManagementRoutes() {
 		mgmt.GET("/quota-exceeded/switch-preview-model", s.mgmt.GetSwitchPreviewModel)
 		mgmt.PUT("/quota-exceeded/switch-preview-model", s.mgmt.PutSwitchPreviewModel)
 		mgmt.PATCH("/quota-exceeded/switch-preview-model", s.mgmt.PutSwitchPreviewModel)
+
+
+
+		// mgmt.PUT("/config", s.mgmt.PutConfig) // Not implemented yet
+
 
 		mgmt.GET("/api-keys", s.mgmt.GetAPIKeys)
 		mgmt.PUT("/api-keys", s.mgmt.PutAPIKeys)
@@ -938,7 +957,8 @@ func (s *Server) UpdateClients(cfg *config.Config) {
 
 	if !cfg.RemoteManagement.DisableControlPanel {
 		staticDir := managementasset.StaticDir(s.configFilePath)
-		go managementasset.EnsureLatestManagementHTML(context.Background(), staticDir, cfg.ProxyURL, cfg.RemoteManagement.PanelGitHubRepository)
+		// go managementasset.EnsureLatestManagementHTML(context.Background(), staticDir, cfg.ProxyURL, cfg.RemoteManagement.PanelGitHubRepository)
+		log.Infof("Auto-update disabled for custom dashboard at %s", staticDir)
 	}
 	if s.mgmt != nil {
 		s.mgmt.SetConfig(cfg)

@@ -17,8 +17,11 @@ type Record struct {
 	AuthIndex   uint64
 	Source      string
 	RequestedAt time.Time
+	Duration    time.Duration
 	Failed      bool
 	Detail      Detail
+	PromptText     string
+	CompletionText string
 }
 
 // Detail holds the token usage breakdown.

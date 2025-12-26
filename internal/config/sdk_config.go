@@ -22,6 +22,17 @@ type SDKConfig struct {
 
 	// Access holds request authentication provider configuration.
 	Access AccessConfig `yaml:"auth,omitempty" json:"auth,omitempty"`
+
+	// APIKeyMetadata provides optional metadata for API keys (e.g. descriptions, tags).
+	APIKeyMetadata map[string]APIKeyMeta `yaml:"api-key-metadata,omitempty" json:"api-key-metadata,omitempty"`
+}
+
+// APIKeyMeta holds metadata for an API key.
+type APIKeyMeta struct {
+	// Description is a human-readable description of the key's purpose.
+	Description string `yaml:"description" json:"description"`
+	// Tags are arbitrary labels associated with the key.
+	Tags []string `yaml:"tags" json:"tags"`
 }
 
 // AccessConfig groups request authentication providers.

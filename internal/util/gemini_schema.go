@@ -16,6 +16,16 @@ var gjsonPathKeyReplacer = strings.NewReplacer(".", "\\.", "*", "\\*", "?", "\\?
 // It handles unsupported keywords, type flattening, and schema simplification while preserving
 // semantic information as description hints.
 func CleanJSONSchemaForAntigravity(jsonStr string) string {
+	return cleanJSONSchema(jsonStr, true)
+}
+
+// CleanJSONSchemaForGemini provides backwards compatibility or specific cleaning for Gemini.
+// It skips the empty schema placeholder addition which is specific to Claude.
+func CleanJSONSchemaForGemini(jsonStr string) string {
+	return cleanJSONSchema(jsonStr, false)
+}
+
+func cleanJSONSchema(jsonStr string, addPlaceholder bool) string {
 	// Phase 1: Convert and add hints
 	jsonStr = convertRefsToHints(jsonStr)
 	jsonStr = convertConstToEnum(jsonStr)
@@ -33,7 +43,9 @@ func CleanJSONSchemaForAntigravity(jsonStr string) string {
 	jsonStr = cleanupRequiredFields(jsonStr)
 
 	// Phase 4: Add placeholder for empty object schemas (Claude VALIDATED mode requirement)
-	jsonStr = addEmptySchemaPlaceholder(jsonStr)
+	if addPlaceholder {
+		jsonStr = addEmptySchemaPlaceholder(jsonStr)
+	}
 
 	return jsonStr
 }

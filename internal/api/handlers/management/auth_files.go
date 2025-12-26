@@ -1412,7 +1412,26 @@ func (h *Handler) RequestAntigravityToken(c *gin.Context) {
 		return
 	}
 
-	redirectURI := fmt.Sprintf("http://localhost:%d/oauth-callback", antigravityCallbackPort)
+	isWebUI := isWebUIRequest(c)
+	var redirectURI string
+	var forwarder *callbackForwarder
+
+	// For Web UI, try to use the actual request host if it's not localhost
+	if isWebUI {
+		host := c.Request.Host
+		scheme := "http"
+		if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		
+		// If accessing via the same port as the server, we can use the direct callback
+		// This avoids the need for a separate port forwarder
+		redirectURI = fmt.Sprintf("%s://%s/antigravity/callback", scheme, host)
+		log.Infof("Using direct callback URI: %s", redirectURI)
+	} else {
+		// Fallback to localhost forwarder for CLI/Default
+		redirectURI = fmt.Sprintf("http://localhost:%d/oauth-callback", antigravityCallbackPort)
+	}
 
 	params := url.Values{}
 	params.Set("access_type", "offline")
@@ -1426,25 +1445,32 @@ func (h *Handler) RequestAntigravityToken(c *gin.Context) {
 
 	RegisterOAuthSession(state, "antigravity")
 
-	isWebUI := isWebUIRequest(c)
-	var forwarder *callbackForwarder
 	if isWebUI {
-		targetURL, errTarget := h.managementCallbackURL("/antigravity/callback")
-		if errTarget != nil {
-			log.WithError(errTarget).Error("failed to compute antigravity callback target")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "callback server unavailable"})
-			return
-		}
-		var errStart error
-		if forwarder, errStart = startCallbackForwarder(antigravityCallbackPort, "antigravity", targetURL); errStart != nil {
-			log.WithError(errStart).Error("failed to start antigravity callback forwarder")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start callback server"})
-			return
+		// Only start forwarder if we reverted to localhost port AND it's different from current host
+		// Ideally if we used the dynamic URI, we don't need the forwarder.
+		// However, if the dynamic URI failed logic?
+		// Actually, if we use the dynamic URI pointing to /antigravity/callback, we DO NOT need the forwarder.
+		// The forwarder was only needed because we were targeting localhost:51121.
+		
+		if redirectURI == fmt.Sprintf("http://localhost:%d/oauth-callback", antigravityCallbackPort) {
+             // Logic for forwarder...
+			targetURL, errTarget := h.managementCallbackURL("/antigravity/callback")
+			if errTarget != nil {
+				log.WithError(errTarget).Error("failed to compute antigravity callback target")
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "callback server unavailable"})
+				return
+			}
+			var errStart error
+			if forwarder, errStart = startCallbackForwarder(antigravityCallbackPort, "antigravity", targetURL); errStart != nil {
+				log.WithError(errStart).Error("failed to start antigravity callback forwarder")
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start callback server"})
+				return
+			}
 		}
 	}
 
 	go func() {
-		if isWebUI {
+		if forwarder != nil {
 			defer stopCallbackForwarderInstance(antigravityCallbackPort, forwarder)
 		}
 

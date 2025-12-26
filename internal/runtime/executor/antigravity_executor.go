@@ -97,6 +97,11 @@ func (e *AntigravityExecutor) Execute(ctx context.Context, auth *cliproxyauth.Au
 	translated = normalizeAntigravityThinking(req.Model, translated)
 	translated = applyPayloadConfigWithRoot(e.cfg, req.Model, "antigravity", "request", translated)
 
+	// Capture prompt text
+	if reporter != nil {
+		reporter.SetPrompt(extractAntigravityPrompt(translated))
+	}
+
 	baseURLs := antigravityBaseURLFallbackOrder(auth)
 	httpClient := newProxyAwareHTTPClient(ctx, e.cfg, auth, 0)
 
@@ -150,7 +155,11 @@ func (e *AntigravityExecutor) Execute(ctx context.Context, auth *cliproxyauth.Au
 			return resp, err
 		}
 
+		if reporter != nil {
+			reporter.SetCompletion(extractAntigravityCompletion(bodyBytes))
+		}
 		reporter.publish(ctx, parseAntigravityUsage(bodyBytes))
+
 		var param any
 		converted := sdktranslator.TranslateNonStream(ctx, to, from, req.Model, bytes.Clone(opts.OriginalRequest), translated, bodyBytes, &param)
 		resp = cliproxyexecutor.Response{Payload: []byte(converted)}
@@ -879,6 +888,78 @@ func FetchAntigravityModels(ctx context.Context, auth *cliproxyauth.Auth, cfg *c
 		return models
 	}
 	return nil
+}
+
+func extractAntigravityPrompt(payload []byte) string {
+	if len(payload) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	
+	// Check system instruction (root or request.system_instruction)
+	si := gjson.GetBytes(payload, "system_instruction.parts.0.text")
+	if !si.Exists() {
+		si = gjson.GetBytes(payload, "request.system_instruction.parts.0.text")
+	}
+	if si.Exists() {
+		sb.WriteString("System: ")
+		sb.WriteString(si.String())
+		sb.WriteString("\n")
+	}
+
+	// Check contents (root or request.contents)
+	contents := gjson.GetBytes(payload, "contents")
+	if !contents.Exists() {
+		contents = gjson.GetBytes(payload, "request.contents")
+	}
+
+	if contents.IsArray() {
+		for _, content := range contents.Array() {
+			role := content.Get("role").String()
+			parts := content.Get("parts")
+			if parts.IsArray() {
+				for _, part := range parts.Array() {
+					text := part.Get("text").String()
+					if text != "" {
+						if sb.Len() > 0 {
+							sb.WriteString("\n")
+						}
+						sb.WriteString(role)
+						sb.WriteString(": ")
+						sb.WriteString(text)
+					}
+				}
+			}
+		}
+	}
+	return sb.String()
+}
+
+func extractAntigravityCompletion(payload []byte) string {
+	if len(payload) == 0 {
+		return ""
+	}
+	// candidates.0.content.parts.0.text
+	text := gjson.GetBytes(payload, "candidates.0.content.parts.0.text")
+	if text.Exists() {
+		return text.String()
+	}
+	// response.candidates...
+	text = gjson.GetBytes(payload, "response.candidates.0.content.parts.0.text")
+	if text.Exists() {
+		return text.String()
+	}
+	// Fallback for some wrappers: response.candidates.0.content.parts.0.text
+	text = gjson.GetBytes(payload, "response.candidates.0.content.parts.0.text")
+	if text.Exists() {
+		return text.String()
+	}
+	// OpenAI format fallback
+	text = gjson.GetBytes(payload, "choices.0.message.content")
+	if text.Exists() {
+		return text.String()
+	}
+	return ""
 }
 
 func (e *AntigravityExecutor) ensureAccessToken(ctx context.Context, auth *cliproxyauth.Auth) (string, *cliproxyauth.Auth, error) {

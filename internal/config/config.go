@@ -23,9 +23,9 @@ type Config struct {
 	SDKConfig `yaml:",inline"`
 	// Host is the network host/interface on which the API server will bind.
 	// Default is empty ("") to bind all interfaces (IPv4 + IPv6). Use "127.0.0.1" or "localhost" for local-only access.
-	Host string `yaml:"host" json:"-"`
+	Host string `yaml:"host" json:"host"`
 	// Port is the network port on which the API server will listen.
-	Port int `yaml:"port" json:"-"`
+	Port int `yaml:"port" json:"port"`
 
 	// TLS config controls HTTPS server settings.
 	TLS TLSConfig `yaml:"tls" json:"tls"`

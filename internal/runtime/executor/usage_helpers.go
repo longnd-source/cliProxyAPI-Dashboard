@@ -23,6 +23,8 @@ type usageReporter struct {
 	apiKey      string
 	source      string
 	requestedAt time.Time
+	prompt      string
+	completion  string
 	once        sync.Once
 }
 
@@ -40,6 +42,20 @@ func newUsageReporter(ctx context.Context, provider, model string, auth *cliprox
 		reporter.authIndex = auth.EnsureIndex()
 	}
 	return reporter
+}
+
+func (r *usageReporter) SetPrompt(text string) {
+	if r == nil {
+		return
+	}
+	r.prompt = text
+}
+
+func (r *usageReporter) SetCompletion(text string) {
+	if r == nil {
+		return
+	}
+	r.completion = text
 }
 
 func (r *usageReporter) publish(ctx context.Context, detail usage.Detail) {
@@ -81,8 +97,11 @@ func (r *usageReporter) publishWithOutcome(ctx context.Context, detail usage.Det
 			AuthID:      r.authID,
 			AuthIndex:   r.authIndex,
 			RequestedAt: r.requestedAt,
-			Failed:      failed,
-			Detail:      detail,
+			Duration:    time.Since(r.requestedAt),
+			Failed:         failed,
+			Detail:         detail,
+			PromptText:     r.prompt,
+			CompletionText: r.completion,
 		})
 	})
 }
@@ -104,8 +123,11 @@ func (r *usageReporter) ensurePublished(ctx context.Context) {
 			AuthID:      r.authID,
 			AuthIndex:   r.authIndex,
 			RequestedAt: r.requestedAt,
-			Failed:      false,
-			Detail:      usage.Detail{},
+			Duration:    time.Since(r.requestedAt),
+			Failed:         false,
+			Detail:         usage.Detail{},
+			PromptText:     r.prompt,
+			CompletionText: r.completion,
 		})
 	})
 }

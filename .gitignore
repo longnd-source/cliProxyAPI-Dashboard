@@ -2,30 +2,31 @@
 cli-proxy-api
 *.exe
 
-# Configuration
+# Configuration (contains sensitive keys)
 config.yaml
 .env
 
 # Generated content
 bin/*
-logs/*
 conv/*
 temp/*
 pgstore/*
 gitstore/*
 objectstore/*
-static/*
 refs/*
 
-# Authentication data
+# Logs (may contain request/response data)
+logs/*
+*.log
+!logs/.gitkeep
+
+# Authentication data (OAuth tokens)
 auths/*
 !auths/.gitkeep
 
-# Documentation
-docs/*
-AGENTS.md
-CLAUDE.md
-GEMINI.md
+# Backup files
+*.bak
+*.backup
 
 # Tooling metadata
 .vscode/*
@@ -39,3 +40,12 @@ _bmad/*
 # macOS
 .DS_Store
 ._*
+
+# IDE
+*.swp
+*.swo
+*~
+
+# Test output
+coverage.out
+*.test

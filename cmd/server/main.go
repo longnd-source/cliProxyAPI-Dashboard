@@ -20,6 +20,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/buildinfo"
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/cmd"
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v6/internal/database"
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/managementasset"
 	"github.com/router-for-me/CLIProxyAPI/v6/internal/misc"
@@ -423,6 +424,12 @@ func main() {
 	}
 	managementasset.SetCurrentConfig(cfg)
 
+	// Initialize database for usage logging
+	if errDb := database.Init(cfg.AuthDir); errDb != nil {
+		log.Errorf("failed to initialize database: %v", errDb)
+		// We continue without DB, activity logs will just fail gracefully or be skipped if handlers check db != nil
+	}
+
 	// Create login options to be used in authentication flows.
 	options := &cmd.LoginOptions{
 		NoBrowser: noBrowser,
@@ -473,7 +480,7 @@ func main() {
 			return
 		}
 		// Start the main proxy service
-		managementasset.StartAutoUpdater(context.Background(), configFilePath)
+		// managementasset.StartAutoUpdater(context.Background(), configFilePath) // Disabled for custom dashboard
 		cmd.StartService(cfg, configFilePath, password)
 	}
 }

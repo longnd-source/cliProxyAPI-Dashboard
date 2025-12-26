@@ -65,7 +65,8 @@ func (h *Handler) GetLogs(c *gin.Context) {
 	}
 
 	cutoff := parseCutoff(c.Query("after"))
-	acc := newLogAccumulator(cutoff, limit)
+	search := strings.TrimSpace(c.Query("search"))
+	acc := newLogAccumulator(cutoff, limit, search)
 	for i := range files {
 		if errProcess := acc.consumeFile(files[i]); errProcess != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to read log file %s: %v", files[i], errProcess)})
@@ -321,13 +322,14 @@ func (h *Handler) collectLogFiles(dir string) ([]string, error) {
 type logAccumulator struct {
 	cutoff  int64
 	limit   int
+	search  string
 	lines   []string
 	total   int
 	latest  int64
 	include bool
 }
 
-func newLogAccumulator(cutoff int64, limit int) *logAccumulator {
+func newLogAccumulator(cutoff int64, limit int, search string) *logAccumulator {
 	capacity := 256
 	if limit > 0 && limit < capacity {
 		capacity = limit
@@ -335,6 +337,7 @@ func newLogAccumulator(cutoff int64, limit int) *logAccumulator {
 	return &logAccumulator{
 		cutoff: cutoff,
 		limit:  limit,
+		search: strings.ToLower(search),
 		lines:  make([]string, 0, capacity),
 	}
 }
@@ -373,11 +376,17 @@ func (acc *logAccumulator) addLine(raw string) {
 	if ts > 0 {
 		acc.include = acc.cutoff == 0 || ts > acc.cutoff
 		if acc.cutoff == 0 || acc.include {
+			if acc.search != "" && !strings.Contains(strings.ToLower(line), acc.search) {
+				return
+			}
 			acc.append(line)
 		}
 		return
 	}
 	if acc.cutoff == 0 || acc.include {
+		if acc.search != "" && !strings.Contains(strings.ToLower(line), acc.search) {
+			return
+		}
 		acc.append(line)
 	}
 }
