@@ -144,6 +144,12 @@ func (e *AntigravityExecutor) Execute(ctx context.Context, auth *cliproxyauth.Au
 
 		if httpResp.StatusCode < http.StatusOK || httpResp.StatusCode >= http.StatusMultipleChoices {
 			log.Debugf("antigravity executor: upstream error status: %d, body: %s", httpResp.StatusCode, summarizeErrorBody(httpResp.Header.Get("Content-Type"), bodyBytes))
+			
+			// Capture error response
+			if reporter != nil {
+				reporter.SetCompletion(string(bodyBytes))
+			}
+
 			lastStatus = httpResp.StatusCode
 			lastBody = append([]byte(nil), bodyBytes...)
 			lastErr = nil
@@ -581,6 +587,12 @@ func (e *AntigravityExecutor) ExecuteStream(ctx context.Context, auth *cliproxya
 				return nil, err
 			}
 			appendAPIResponseChunk(ctx, e.cfg, bodyBytes)
+			
+			// Capture error response
+			if reporter != nil {
+				reporter.SetCompletion(string(bodyBytes))
+			}
+
 			lastStatus = httpResp.StatusCode
 			lastBody = append([]byte(nil), bodyBytes...)
 			lastErr = nil

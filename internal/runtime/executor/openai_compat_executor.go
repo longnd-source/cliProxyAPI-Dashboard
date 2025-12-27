@@ -126,6 +126,12 @@ func (e *OpenAICompatExecutor) Execute(ctx context.Context, auth *cliproxyauth.A
 		b, _ := io.ReadAll(httpResp.Body)
 		appendAPIResponseChunk(ctx, e.cfg, b)
 		log.Debugf("request error, error status: %d, error body: %s", httpResp.StatusCode, summarizeErrorBody(httpResp.Header.Get("Content-Type"), b))
+		
+		// Capture error response
+		if reporter != nil {
+			reporter.SetCompletion(string(b))
+		}
+
 		err = statusErr{code: httpResp.StatusCode, msg: string(b)}
 		return resp, err
 	}
@@ -225,6 +231,12 @@ func (e *OpenAICompatExecutor) ExecuteStream(ctx context.Context, auth *cliproxy
 		if errClose := httpResp.Body.Close(); errClose != nil {
 			log.Errorf("openai compat executor: close response body error: %v", errClose)
 		}
+
+		// Capture error response
+		if reporter != nil {
+			reporter.SetCompletion(string(b))
+		}
+
 		err = statusErr{code: httpResp.StatusCode, msg: string(b)}
 		return nil, err
 	}
