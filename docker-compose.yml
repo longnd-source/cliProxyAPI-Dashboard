@@ -1,7 +1,7 @@
 services:
   cli-proxy-api:
     image: ${CLI_PROXY_IMAGE:-eceasy/cli-proxy-api:latest}
-    pull_policy: always
+    # Removed pull_policy: always to prioritize local builds with custom static files
     build:
       context: .
       dockerfile: Dockerfile
@@ -27,5 +27,7 @@ services:
       - ./config.yaml:/CLIProxyAPI/config.yaml
       - ${HOME}/.cli-proxy-api:/root/.cli-proxy-api
       - ./logs:/CLIProxyAPI/logs
-      - ./static:/CLIProxyAPI/static
+      # Static files are baked into the image via Dockerfile COPY command
+      # Uncomment below line ONLY for hot-reload development:
+      # - ./static:/CLIProxyAPI/static
     restart: unless-stopped
