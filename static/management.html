@@ -2597,8 +2597,17 @@
       const data = await res.json();
       const models = data.models || [];
 
-      const standardModels = ['gpt-4o', 'gpt-4-turbo', 'claude-3-5-sonnet-20240620', 'gemini-1.5-pro', 'gemini-1.5-flash'];
-      const allModels = [...new Set([...standardModels, ...models])].sort();
+      const standardModels = [
+        'gemini-3-pro-preview',
+        'gpt-oss-120b-medium',
+        'gemini-3-pro-image-preview',
+        'gemini-claude-sonnet-4-5',
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-claude-sonnet-4-5-thinking',
+        'gemini-claude-opus-4-5-thinking',
+        'gemini-2.5-computer-use-preview-10-2025'
+      ];
 
       container.innerHTML = '';
       if (allModels.length === 0) {
